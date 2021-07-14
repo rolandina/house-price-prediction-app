@@ -6,5 +6,4 @@ statsmodels
 scikit-learn
 streamlit
 fastapi
-json
 requests
