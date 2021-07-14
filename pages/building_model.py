@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+import random
 import seaborn as sns
 import matplotlib.pyplot as plt
 from streamlit.state.session_state import Value
@@ -20,12 +21,32 @@ from sklearn.model_selection import GridSearchCV, RepeatedKFold, train_test_spli
 import matplotlib as mpl
 mpl.rcParams.update(mpl.rcParamsDefault)
 
+
 #prepare cache data
 @st.cache
 def load_data():
     return Data()
 
 target = "SalePrice"
+
+def widget_predict(df):
+    dict_params = {col: 0 for col in df.columns}
+    house = {col: [] for col in df.columns}
+    for key in dict_params.keys():
+        if df[key].dtypes == 'int' or df[key].dtypes == 'float':
+            if len(df[key].unique())>10:
+                dict_params[key] = (df[key].min(), df[key].max())
+                house[key].append(st.slider(key, dict_params[key][0], dict_params[key][1] ))
+            elif len(df[key].unique())<=10:
+                dict_params[key] = tuple(df[key].unique())
+                house[key].append(st.selectbox(key,dict_params[key]))
+                
+
+        else:
+            dict_params[key] = tuple(df[key].unique())
+            house[key].append(st.selectbox(key,dict_params[key]))
+    h = pd.DataFrame(house).values
+    return h
 
 def add_parameter_ui(reg_name):
     params = dict()
@@ -130,8 +151,6 @@ def app():
             st.write(model_name, " with grid search")
             st.write(params)
 
-
-
         else:
             params = add_parameter_ui(model_name)
             model = get_regressor(model_name, params)
@@ -140,7 +159,16 @@ def app():
 
     # right column with house price prediction
     with col2:
-        col2.title("Price Prediction")
+        st.title("Price Prediction")
+        X_house = widget_predict(test)
+
+        value = model.predict(X_house)[0]
+        
+        result_price = f'## Expected price of the house is:\n <p style="font-family:sans-serif; color:Green; font-size: 42px;">{value:,.0f} $</p>'
+        st.markdown(result_price, unsafe_allow_html=True)
+
+        
+
 
         
 
