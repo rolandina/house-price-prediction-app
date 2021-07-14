@@ -1,22 +1,22 @@
 import streamlit as st
 import seaborn as sns
 import matplotlib.pyplot as plt
-from model.data import Data 
+from model.data import Data
 
 
 def app():
     st.title('Data Analysis')
     st.markdown("### Predict house prices in USA")
-
+    
     #prepare cache data
     @st.cache
     def load_data():
-        data = Data()
-        test = data.get_prepared_test_data()
-        train = data.get_prepared_train_data()
-        return (train, test)
+        return Data()
 
-    train, test = load_data()
+    data = load_data()
+
+    test = data.get_prepared_test_data()
+    train = data.get_prepared_train_data()
     target = "SalePrice"
 
     plot_type = st.selectbox("Plot type:",("Numerical", "Categorical","Correlation-Resuduals"))

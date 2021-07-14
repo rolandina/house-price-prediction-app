@@ -2,6 +2,7 @@ import os
 import streamlit as st
 import numpy as np
 from PIL import  Image
+ 
 
 # Custom imports 
 from multipage import MultiPage
@@ -18,17 +19,22 @@ app = MultiPage()
 
 display = np.array(display)
 #st.image(display, width = 200)
-st.title("House Price Prediction Application")
+
 col1, col2 = st.beta_columns([1,4])
 col1.image(display, width = 200)
+col2.title("House Price Prediction Application")
+
 col2.markdown("### With our house price prediction \
 application you are free to analyse the price of the houses depending from different paremeters as long as to predict the price of the house by choosing parameters you need.")
+
+
 
 # Add all your application here
 app.add_page("test", test.app)
 app.add_page("Data Analysis", data_analysis.app)
-app.add_page("Model", building_model.app)
+app.add_page("Model and price prediction", building_model.app)
 #app.add_page("PCA", pca.app)
 
 # The main app
 app.run()
+

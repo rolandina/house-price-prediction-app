@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
 
-import data as d
+from model.data import Data
 
 sns.set()  # Setting seaborn as default style even if use only matplotlib
 sns.set_palette("Paired")  # set color palette
@@ -45,8 +45,10 @@ lasso_parms = {'alpha': [1.0, 2., 3.],
 
 
 class HousePredictionModel:
-    def __init__(self):
-        data = d.Data()
+    def __init__(self, data: Data()):
+        """Class HousePredictionModel deals with other class called Data. In order to create a class member 
+        you have to pass member of class Data()"""
+
         self.train_df = data.get_prepared_train_data()
         self.target = data.target
         
@@ -61,13 +63,13 @@ class HousePredictionModel:
     def create_model(self, mod_type):
 
         cv1 = RepeatedKFold(n_splits=10, n_repeats=10, random_state=1)
-        if mod_type == 1:
+        if mod_type == "Ridge":
             model = Ridge()
             model_params = ridge_parms
-        elif mod_type == 2:
+        elif mod_type == "Lasso":
             model = Lasso()
             model_params = lasso_parms
-        else:
+        elif mod_type == "Linear Regression":
             model = LinearRegression()
             model_params = lr_params
 
@@ -152,8 +154,7 @@ def plot_categorical_features(df, target):
         if len(df[feature].unique())>20:
             plt.xticks(rotation=45)
         axes[i].set_title(f"{target} by {feature}")
-    plt.tight_layout()
-    plt.show()
+    return fig
 
 
 def plot_res_corr(df, target): 
