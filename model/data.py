@@ -1,21 +1,41 @@
-columns_to_save =  [ 
-    'LotArea', 
+columns_to_save_not_pca =  [
+    'LotArea',
     #'LotShape', ## change reg/irreg
-    #'Neighborhood', 
-    'OverallQual', 
-    'YearBuilt', 
-    'YearRemodAdd', 
-    #'Exterior1st', 
+    #'Neighborhood',
+    'OverallQual',
+    'YearBuilt',
+    'YearRemodAdd',
+    #'Exterior1st',
     #'ExterQual', ## good/not good
-    #'Foundation', ## pcon/notpcon 
-    'GrLivArea', 
-    #'TotRmsAbvGrd', 
-    'Fireplaces', 
+    #'Foundation', ## pcon/notpcon
+    'GrLivArea',
+    #'TotRmsAbvGrd',
+    'Fireplaces',
     # 'GarageType', ## attached/detached
-    #'GarageCars', 
-    'GarageArea',  
-    'SalePrice'
+    'GarageCars',
+    #'GarageArea',
+    #'SalePrice'
     ]
+
+columns_to_save = [
+       'MSSubClass', 'MSZoning', 'LotFrontage', 'LotArea', 'Street',
+       'Alley', 'LotShape', 'LandContour', 'Utilities', 'LotConfig',
+       'LandSlope', 'Neighborhood', 'Condition1', 'Condition2', 'BldgType',
+       'HouseStyle', 'OverallQual', 'OverallCond', 'YearBuilt', 'YearRemodAdd',
+       'RoofStyle', 'RoofMatl', 'Exterior1st', 'Exterior2nd', 'MasVnrType',
+       'MasVnrArea', 'ExterQual', 'ExterCond', 'Foundation', 'BsmtQual',
+       'BsmtCond', 'BsmtExposure', 'BsmtFinType1', 'BsmtFinSF1',
+       'BsmtFinType2', 'BsmtFinSF2', 'BsmtUnfSF', 'TotalBsmtSF', 'Heating',
+       'HeatingQC', 'CentralAir', 'Electrical', '1stFlrSF', '2ndFlrSF',
+       'LowQualFinSF', 'GrLivArea', 'BsmtFullBath', 'BsmtHalfBath', 'FullBath',
+       'HalfBath', 'BedroomAbvGr', 'KitchenAbvGr', 'KitchenQual',
+       'TotRmsAbvGrd', 'Functional', 'Fireplaces', 'FireplaceQu', 'GarageType',
+       'GarageYrBlt', 'GarageFinish', 'GarageCars', 'GarageArea', 'GarageQual',
+       'GarageCond', 'PavedDrive', 'WoodDeckSF', 'OpenPorchSF',
+       'EnclosedPorch', '3SsnPorch', 'ScreenPorch', 'PoolArea', 'PoolQC',
+       'Fence', 'MiscFeature', 'MiscVal', 'MoSold', 'YrSold', 'SaleType',
+       'SaleCondition', 'SalePrice'
+       ]
 
 columns_to_save_test =   [ 
     'LotArea', 
@@ -23,7 +43,13 @@ columns_to_save_test =   [
     #'Neighborhood', 
     'OverallQual']
 
-
+ordinal_cat_columns = ['LandSlope','ExterQual','ExterCond','BsmtQual','BsmtCond','BsmtExposure','BsmtFinType1',
+                       'BsmtFinType2','HeatingQC','KitchenQual','FireplaceQu','GarageFinish','GarageQual','GarageCond',
+                       'PavedDrive','PoolQC','Fence','OverallQual','OverallCond']
+cat_columns = ['MSZoning','Alley','Street','LotShape','LandContour','Utilities','LotConfig',
+               'Neighborhood','Condition1','Condition2','BldgType','HouseStyle','RoofStyle',
+               'RoofMatl','Exterior1st','Exterior2nd','MasVnrType','Foundation','Heating','CentralAir','Electrical',
+               'Functional','GarageType','MiscFeature','SaleType','SaleCondition','MSSubClass']
 
 import pandas as pd
 import numpy as np
@@ -31,6 +57,18 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import requests
 import json
+from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.preprocessing import StandardScaler, OrdinalEncoder, MinMaxScaler, OneHotEncoder
+
+from sklearn.compose import ColumnTransformer
+from sklearn.compose import make_column_selector as selector
+from sklearn.pipeline import Pipeline
+from sklearn.impute import SimpleImputer
+
+### models
+from sklearn.linear_model import LinearRegression, Ridge, Lasso
+from sklearn.decomposition import PCA
+from sklearn.ensemble import RandomForestRegressor
 
 
 def get_df_from_heroku(url):
@@ -95,24 +133,45 @@ class Data:
         return self.__prepare_data(self.__df_test, cols_to_save)
 
 ### change this function for each data frame
-    def __prepare_data(self, df, cols_to_save):  
+    def __prepare_data(self, df, cols_to_save):
         new_df = df.copy()
+        new_df['Electrical'] = new_df['Electrical'].fillna(value='SBrkr')
+        new_df = new_df.drop(['GarageArea', 'GarageYrBlt', 'TotRmsAbvGrd', '1stFlrSF'], axis=1)
+
 
     # drop columns
-        new_df = drop_columns(new_df, cols_to_save)
+        #new_df = drop_columns(new_df, cols_to_save)
     # replace nan manually - function for manual correction for different data frame
         #replace_nan_manually(new_df)     
     # drop nan rows
-        drop_nan_rows(new_df)
-        
+        #drop_nan_rows(new_df)
         #new_df = remove_nan_column(new_df, self.__max_NaN_in_columns)
-        
     #remove anomaly
         #new_df = abnormal_filter(new_df, self.__threshold_first, self.__threshold_second)
         #print(f"Dropped {num_col - len(df.columns)} columns.")
+
         return new_df
 
+    def pipeline(model_name, model, params):
+        numeric_pipe = Pipeline(steps=[
+            ('imputer', SimpleImputer(strategy='median')),
+            ('scaler', MinMaxScaler())])
+        categorical_encoder = Pipeline(steps=[
+            ('const_imputer', SimpleImputer(strategy='constant',fill_value='Abs')),
+            ('cat_encoder', OneHotEncoder())])
 
+        ordinal_encoder = Pipeline(steps=[
+            ('const_imputer', SimpleImputer(strategy='constant',fill_value='Abs')),
+            ('ord_encoder', OrdinalEncoder())])
+
+        preprocessor = ColumnTransformer(transformers=[
+            ('num', numeric_pipe, selector(dtype_include=["int", "float"])),
+            ('ord_enc', ordinal_encoder, ordinal_cat_columns),
+            ('cat_enc', categorical_encoder, cat_columns)],remainder='passthrough')
+
+        reg_final = Pipeline(steps=[('preprocessor', preprocessor),
+                                    (f'{model_name}', model(params))])
+        return reg_final
 
 ### help functions
 def drop_columns(df, columns_to_save):
