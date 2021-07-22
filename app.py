@@ -7,7 +7,7 @@ from PIL import  Image
 # Custom imports 
 from multipage import MultiPage
 
-from pages import test, data_analysis, model_and_prediction # import your pages here
+from pages import test, data_analysis, model_and_prediction, pca # import your pages here
 
 display = Image.open('data/house_price_b.jpg')
 
@@ -33,7 +33,7 @@ application you are free to analyse the price of the houses depending from diffe
 app.add_page("test", test.app)
 app.add_page("Data Analysis", data_analysis.app)
 app.add_page("Model and price prediction", model_and_prediction.app)
-#app.add_page("PCA", pca.app)
+app.add_page("PCA", pca.app)
 
 # The main app
 app.run()
