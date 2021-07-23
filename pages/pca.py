@@ -1,8 +1,24 @@
 import streamlit as st
-
+import matplotlib.pyplot as plt
+import numpy as np # linear algebra
+import pandas as pd
+from sklearn.impute import SimpleImputer
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.decomposition import PCA
+from model.data import Data
 
 def app():
+    #prepare cache data
+    @st.cache
+    def load_data():
+        return Data()
+
+    data = load_data()
+    train = data.get_prepared_train_data()
     text_markdown = """
+
+
 # COURS PCA
 
 ### LIENS Utiles
@@ -37,4 +53,48 @@ def app():
 ## Préprocessing Numérique. 
 Objectifs ==> imputer les valeurs manquantes et centrer les données autour de 0"""
 
-    st.markdown(text_markdown, unsafe_allow_html=True) 
+    st.markdown(text_markdown, unsafe_allow_html=True)
+
+    target = 'SalePrice'
+
+    train = train.drop(['Id' , 'MSSubClass', 'OverallQual', 'OverallCond'], axis=1)
+
+    X, y = train[[col for col in train.columns if col != target]], train[target]
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.20, random_state=1)
+
+    X_train_pca = X_train.select_dtypes(include=['int', 'float'])
+
+    num_imputer = SimpleImputer(strategy="median")
+    X_train_num_imputed = num_imputer.fit_transform(X_train_pca)
+    X_train_num_imputed_df = pd.DataFrame(X_train_num_imputed, columns = X_train_pca.columns)
+
+    num_scaler = StandardScaler()
+    X_train_num_scaled = num_scaler.fit_transform(X_train_num_imputed)
+    X_train_num_scaled_df = pd.DataFrame(X_train_num_scaled, columns = X_train_pca.columns)
+
+    pca = PCA()
+    pca.fit(X_train_num_scaled_df)
+    cumsum = np.cumsum(pca.explained_variance_ratio_)
+    d = np.argmax(cumsum >= 0.95) + 1
+    fig = plt.figure(figsize=(6,4))
+    plt.title("Somme cumulative de la variance expliquée")
+    plt.plot(cumsum, linewidth=2)
+    plt.axis([0, X_train_num_scaled_df.shape[1], 0, 1])
+    plt.xlabel("Dimensions")
+    plt.ylabel("Explained Variance")
+    plt.plot([d, d], [0, 0.95], "k:")
+    plt.plot([0, d], [0.95, 0.95], "k:")
+    plt.plot(d, 0.95, "ko")
+    #plt.annotate("Elbow", xy=(65, 0.85), xytext=(70, 0.7),
+                 #arrowprops=dict(arrowstyle="->"), fontsize=16)
+    plt.grid(True)
+    st.pyplot(fig)
+
+    fig2 = plt.figure(figsize=(20,10))
+    features = range(pca.n_components_)
+    plt.title('Visualisation de la variance expliquée')
+    plt.bar(features, pca.explained_variance_ratio_)
+    plt.xlabel('Principal Components')
+    plt.ylabel('Explained Variance')
+    plt.xticks(features)
+    st.pyplot(fig2)
