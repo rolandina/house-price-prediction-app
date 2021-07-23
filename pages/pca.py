@@ -88,6 +88,13 @@ Objectifs ==> imputer les valeurs manquantes et centrer les données autour de 0
     #plt.annotate("Elbow", xy=(65, 0.85), xytext=(70, 0.7),
                  #arrowprops=dict(arrowstyle="->"), fontsize=16)
     plt.grid(True)
-    plt.show()
-
     st.pyplot(fig)
+
+    fig2 = plt.figure(figsize=(20,10))
+    features = range(pca.n_components_)
+    plt.title('Visualisation de la variance expliquée')
+    plt.bar(features, pca.explained_variance_ratio_)
+    plt.xlabel('Principal Components')
+    plt.ylabel('Explained Variance')
+    plt.xticks(features)
+    st.pyplot(fig2)
