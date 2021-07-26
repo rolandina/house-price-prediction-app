@@ -72,6 +72,12 @@ class Data:
     __chosen_columns = columns_to_save
     __prediction_columns = []
 
+ 
+        #version2 (manual)
+        #columns_to_save = ['LotArea', 'OverallQual', '1stFlrSF', 'YearBuilt', 'YearRemodAdd', 'MasVnrArea', 'BsmtFinSF1', 'TotalBsmtSF', 'GrLivArea', 'FullBath', 'TotRmsAbvGrd', 'Fireplaces', 'GarageCars', 'GarageArea', 'MSZoning', 'LotShape', 'LandContour', 'Neighborhood', 'Condition1', 'Condition2', 'HouseStyle', 'RoofMatl', 'Exterior1st', 'Exterior2nd', 'ExterQual', 'BsmtQual', 'BsmtExposure', 'KitchenQual', 'Functional', 'SaleType', 'SaleCondition', "SalePrice"]
+        #1. create list of features to drop if they are not in a save list
+
+
     def __init__(self):
         ## initialise with Data object with data frame
         #__df_train, __df__test - initial data frame without preprocessing 
@@ -80,6 +86,7 @@ class Data:
         #divide only train set on X and y as for test set we don't have target
         self.__X, self.__y = self.__df_train.drop(columns = [self.target]), self.__df_train[self.target]
         self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(self.__X, self.__y, test_size=0.20, random_state=1)
+        columns_to_save =  create_best_corr_list(self.__df_train, self.target) + ['Neighborhood']
 
 
     # read data file
@@ -102,6 +109,11 @@ class Data:
         """Return list of features used in a model (use for prediction)"""
         return self.__prediction_columns
     
+    def get_prepared_data_for_prediction(self, X_input):
+         # do my transformation pipeline
+        X_output = self.__preprocessing_standard(X_input)
+        return X_output
+
     def get_prepared_data_for_model(self, model_name):
         if model_name == 'RandomForest':
             #do pca transformation
@@ -109,6 +121,10 @@ class Data:
             X_test = self.__preprocessing_pca(self.X_test)          
         else:
             # do my transformation pipeline
+            #version1
+            corr_cols =  create_best_corr_list(self.__df_train, self.target) + ['Neighborhood']
+            self.__prediction_columns = corr_cols
+
             X_train = self.__preprocessing_standard(self.X_train)
             X_test = self.__preprocessing_standard(self.X_test)
         return (X_train, X_test, self.y_train, self.y_test)
@@ -127,40 +143,34 @@ class Data:
         return numeric_pipe.fit_transform(X_input)
 
     def __preprocessing_standard(self, X_input):
-        #version1
-        columns_to_save =  create_best_corr_list(self.__df_train, self.target) + ['Neighborhood']
-        #version2 (manual)
-        #columns_to_save = ['LotArea', 'OverallQual', '1stFlrSF', 'YearBuilt', 'YearRemodAdd', 'MasVnrArea', 'BsmtFinSF1', 'TotalBsmtSF', 'GrLivArea', 'FullBath', 'TotRmsAbvGrd', 'Fireplaces', 'GarageCars', 'GarageArea', 'MSZoning', 'LotShape', 'LandContour', 'Neighborhood', 'Condition1', 'Condition2', 'HouseStyle', 'RoofMatl', 'Exterior1st', 'Exterior2nd', 'ExterQual', 'BsmtQual', 'BsmtExposure', 'KitchenQual', 'Functional', 'SaleType', 'SaleCondition', "SalePrice"]
-        #1. create list of features to drop if they are not in a save list
 
-        self.__prediction_columns = columns_to_save
-        drop_features = [col for col in self.__df_train.columns if col not in columns_to_save] 
+        drop_features = [col for col in X_input.columns if col not in self.__prediction_columns] 
         if self.target in drop_features:
             drop_features.remove(self.target)
 
         #2. ordinal - categorical
         ordinal_features = [
-            feature for feature in ordinal_cols if feature not in drop_features
+            feature for feature in ordinal_cols if feature in self.__prediction_columns
         ]
         ordinal_cat = create_categories_for_ordinal_features(self.__df_train, self.target, ordinal_features)
 
         #3 numerical - with log transformation    
         numeric_power_features = [
             feature for feature in numeric_power_cols
-            if feature not in drop_features
+            if feature in self.__prediction_columns
         ]
 
         #4 numerical without log transformation
         numeric_scale_features = [
             feature for feature in numeric_scale_cols
-            if feature not in drop_features
+            if feature in self.__prediction_columns
         ]
 
         #5 categorical - dummies
         categorical_features = self.__df_train.select_dtypes(include=['object']).columns
         categorical_features = [
             feature for feature in categorical_features
-            if feature not in ordinal_features and feature not in drop_features
+            if feature not in ordinal_features and feature in self.__prediction_columns
         ]
 
         numeric_power_transformer = Pipeline(
@@ -191,9 +201,10 @@ class Data:
             ('cat', categorical_transformer, categorical_features),
             ('ordinal', ordinal_transformer, ordinal_features)
         ])
-        self.pipeline = preprocessor
 
-        return preprocessor.fit_transform(X_input)
+        preprocessor.fit(self.X_train[X_input.columns])
+
+        return preprocessor.transform(X_input)
 
 #helf function for standard preprocessing pipeline 
 def create_categories_for_ordinal_features(df, target, list_ordinal_features):

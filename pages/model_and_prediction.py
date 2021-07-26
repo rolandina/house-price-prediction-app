@@ -172,11 +172,12 @@ def app():
         space = st.empty()
         st.markdown('<p style="color:Green; font-size: 38px;"> Price Prediction</p>', unsafe_allow_html=True)
         X_house = widget_predict(data.get_test_df(), data.get_columns_names())
+        st.write(X_house)
         
-        #dfh = data.X_test.loc[:, data.get_columns_names()]
-        # if model_name != 'RandomForest':
-        #     data.pipeline.fit(dfh)
-        #     #X_house = data.pipeline.transform(X_house)
+        if model_name != 'RandomForest':
+            X_house = data.get_prepared_data_for_prediction(X_house)
+        st.write(X_house)
+        st.write(model.predict(X_house))
         value = model.predict(X_house)[0]
         result_price = f'## Expected price of the house is:\n <p style="color:Green; font-size: 42px;">{value:,.0f} $</p>'
         with space:
