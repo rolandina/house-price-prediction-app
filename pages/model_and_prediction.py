@@ -33,21 +33,19 @@ target = "SalePrice"
 
 def widget_predict(df, cols):
     dict_params = {col: 0 for col in cols}
-    house = {col: [] for col in df.columns}
-    for key in df.columns:
-        if key in cols:
-            if df[key].dtypes == 'int' or df[key].dtypes == 'float':
-                if len(df[key].unique())>10:
-                    dict_params[key] = (df[key].min(), df[key].max())
-                    house[key].append(st.slider(key, dict_params[key][0], dict_params[key][1] ))
-                elif len(df[key].unique())<=10:
-                    dict_params[key] = tuple(df[key].unique())
-                    house[key].append(st.selectbox(key, dict_params[key]))
-            else:
+    house = {col: [] for col in cols}
+    for key in cols:
+        if df[key].dtypes == 'int' or df[key].dtypes == 'float':
+            if len(df[key].unique())>10:
+                dict_params[key] = (df[key].min(), df[key].max())
+                house[key].append(st.slider(key, dict_params[key][0], dict_params[key][1] ))
+            elif len(df[key].unique())<=10:
                 dict_params[key] = tuple(df[key].unique())
-                house[key].append(st.selectbox(key,dict_params[key]))
+                house[key].append(st.selectbox(key, dict_params[key]))
         else:
-            house[key].append(np.NaN)
+            dict_params[key] = tuple(df[key].unique())
+            house[key].append(st.selectbox(key,dict_params[key]))
+
     
     h = pd.DataFrame(house)
 
@@ -171,15 +169,15 @@ def app():
 
     # right column with house price prediction
     with col2:
+        space = st.empty()
         st.markdown('<p style="color:Green; font-size: 38px;"> Price Prediction</p>', unsafe_allow_html=True)
         X_house = widget_predict(data.get_test_df(), data.get_columns_names())
-        st.write(X_house)
-        dfh = data.X_test.loc[:, data.get_columns_names()]
-        st.write(f'fkj {type(dfh)}', unsafe_allow_html=True)
-        if model_name != "RandomForest":
-            data.pipeline.fit(dfh)
-            #X_house = data.pipeline.transform(X_house)
-        #value = model.predict(X_house)[0]
-        value = 0
+        
+        #dfh = data.X_test.loc[:, data.get_columns_names()]
+        # if model_name != 'RandomForest':
+        #     data.pipeline.fit(dfh)
+        #     #X_house = data.pipeline.transform(X_house)
+        value = model.predict(X_house)[0]
         result_price = f'## Expected price of the house is:\n <p style="color:Green; font-size: 42px;">{value:,.0f} $</p>'
-        st.markdown(result_price, unsafe_allow_html=True)
+        with space:
+            st.markdown(result_price, unsafe_allow_html=True)
