@@ -32,24 +32,24 @@ def load_data():
 target = "SalePrice"
 
 def widget_predict(df, cols):
+    df = df[cols].dropna(axis = 0)
     dict_params = {col: 0 for col in cols}
     house = {col: [] for col in cols}
     for key in cols:
         if df[key].dtypes == 'int' or df[key].dtypes == 'float':
             if len(df[key].unique())>10:
-                dict_params[key] = (df[key].min(), df[key].max())
-                house[key].append(st.slider(key, dict_params[key][0], dict_params[key][1] ))
+                dict_params[key] = (int(df[key].min()), int(df[key].max()))
+                house[key].append(st.slider(key, dict_params[key][0], dict_params[key][1] , value=int(df[key].mode()) ))
             elif len(df[key].unique())<=10:
-                dict_params[key] = tuple(df[key].unique())
+                list_unique_cat = [int(x) for x in list(df[key].unique())]
+                list_unique_cat.sort()
+                dict_params[key] = tuple(list_unique_cat)
                 house[key].append(st.selectbox(key, dict_params[key]))
         else:
             dict_params[key] = tuple(df[key].unique())
             house[key].append(st.selectbox(key,dict_params[key]))
-
     
-    h = pd.DataFrame(house)
-
-    return h
+    return pd.DataFrame(house)
 
 def add_parameter_ui(reg_name):
     params = dict()
@@ -142,7 +142,7 @@ def app():
     data = load_data()
 
     #separate page on 3 columns - left column - for 'building a model section', middle one for spacing and right one - for 'price prediction'
-    col1, col_space, col2 = st.beta_columns([4,1,4])
+    col1, col_space, col2 = st.beta_columns([5,1,5])
 
     with col1:
         
@@ -168,14 +168,13 @@ def app():
         
 
     # right column with house price prediction
-    with col2:
-        space = st.empty()
+    with col2: 
         st.markdown('<p style="color:Green; font-size: 38px;"> Price Prediction</p>', unsafe_allow_html=True)
+        space = st.empty()
         X_house = widget_predict(data.get_test_df(), data.get_columns_names())
-        
         if model_name != 'RandomForest':
             X_house = data.get_prepared_data_for_prediction(X_house)
         value = model.predict(X_house)[0]
-        result_price = f'## Expected price of the house is:\n <p style="color:Green; font-size: 42px;">{value:,.0f} $</p>'
-        with space:
-            st.markdown(result_price, unsafe_allow_html=True)
+        result_price = f'<span style="font-size: 24px;"> Expected price of the house is: </span> <span style="color:Green; font-size: 36px;">{value:,.0f} $</span>'
+        
+        space.markdown(result_price, unsafe_allow_html=True)
