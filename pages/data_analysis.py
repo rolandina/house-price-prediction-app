@@ -20,8 +20,8 @@ def app():
 
     data = load_data()
 
-    test = data.get_prepared_test_data()
-    train = data.get_prepared_train_data()
+    test = data.get_test_df()
+    train = data.get_train_df()
     target = "SalePrice"
 
     empty, col1 = st.beta_columns([5,1])

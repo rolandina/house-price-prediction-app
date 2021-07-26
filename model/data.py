@@ -1,22 +1,3 @@
-columns_to_save_not_pca =  [
-    'LotArea',
-    #'LotShape', ## change reg/irreg
-    #'Neighborhood',
-    'OverallQual',
-    'YearBuilt',
-    'YearRemodAdd',
-    #'Exterior1st',
-    #'ExterQual', ## good/not good
-    #'Foundation', ## pcon/notpcon
-    'GrLivArea',
-    #'TotRmsAbvGrd',
-    'Fireplaces',
-    # 'GarageType', ## attached/detached
-    'GarageCars',
-    #'GarageArea',
-    #'SalePrice'
-    ]
-
 columns_to_save = [
        'MSSubClass', 'MSZoning', 'LotFrontage', 'LotArea', 'Street',
        'Alley', 'LotShape', 'LandContour', 'Utilities', 'LotConfig',
@@ -37,19 +18,24 @@ columns_to_save = [
        'SaleCondition', 'SalePrice'
        ]
 
-columns_to_save_test =   [ 
-    'LotArea', 
-    #'LotShape', ## change reg/irreg
-    #'Neighborhood', 
-    'OverallQual']
+ordinal_cols = [
+            'PoolQC', 'KitchenQual', 'ExterQual', 'HeatingQC', 'BsmtCond', 'BsmtQual',
+            'ExterCond', 'GarageCond', 'GarageQual', 'FireplaceQu', 'Neighborhood']
 
-ordinal_cat_columns = ['LandSlope','ExterQual','ExterCond','BsmtQual','BsmtCond','BsmtExposure','BsmtFinType1',
-                       'BsmtFinType2','HeatingQC','KitchenQual','FireplaceQu','GarageFinish','GarageQual','GarageCond',
-                       'PavedDrive','PoolQC','Fence','OverallQual','OverallCond']
-cat_columns = ['MSZoning','Alley','Street','LotShape','LandContour','Utilities','LotConfig',
-               'Neighborhood','Condition1','Condition2','BldgType','HouseStyle','RoofStyle',
-               'RoofMatl','Exterior1st','Exterior2nd','MasVnrType','Foundation','Heating','CentralAir','Electrical',
-               'Functional','GarageType','MiscFeature','SaleType','SaleCondition','MSSubClass']
+numeric_power_cols = [
+            'Id', 'LotArea', 'GrLivArea', 'BsmtUnfSF', '1stFlrSF', 'TotalBsmtSF',
+            'BsmtFinSF1', 'GarageArea', '2ndFlrSF', 'MasVnrArea', 'WoodDeckSF',
+            'OpenPorchSF', 'BsmtFinSF2', 'EnclosedPorch', 'YearBuilt', 'LotFrontage',
+            'ScreenPorch']
+
+numeric_scale_cols = [
+            'LowQualFinSF', 'MiscVal', '3SsnPorch', 'MSSubClass', 'MoSold',
+            'TotRmsAbvGrd', 'OverallQual', 'OverallCond', 'PoolArea', 'BedroomAbvGr',
+            'YrSold', 'GarageCars', 'KitchenAbvGr', 'Fireplaces', 'BsmtFullBath',
+            'FullBath', 'BsmtHalfBath', 'HalfBath'
+        ]
+
+
 
 import pandas as pd
 import numpy as np
@@ -59,6 +45,7 @@ import requests
 import json
 from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.preprocessing import StandardScaler, OrdinalEncoder, MinMaxScaler, OneHotEncoder
+from sklearn.model_selection import train_test_split
 
 from sklearn.compose import ColumnTransformer
 from sklearn.compose import make_column_selector as selector
@@ -79,22 +66,21 @@ def get_df_from_heroku(url):
     return pd.DataFrame.from_dict(a_json, orient="columns")
 
 
-
 class Data:
     # change parameters here
     target = 'SalePrice'
-
     __chosen_columns = columns_to_save
-    __data_file = 'data.csv'
-    __max_NaN_in_columns = 0.2 # if more than 20% nan column will be removed
-    __threshold_first =  0.01  #threshold_first (5%-min or max-95%) for abnormal filter
-    __threshold_second =  0.05    #threshold_second (second diff., times) for abnormal filter
+    __prediction_columns = []
 
     def __init__(self):
         ## initialise with Data object with data frame
+        #__df_train, __df__test - initial data frame without preprocessing 
+        # df_train for building model and training model, X_predict for prediction only
         self.__df_train, self.__df_test = self.__read_df()
+        #divide only train set on X and y as for test set we don't have target
+        self.__X, self.__y = self.__df_train.drop(columns = [self.target]), self.__df_train[self.target]
+        self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(self.__X, self.__y, test_size=0.20, random_state=1)
 
- 
 
     # read data file
     def __read_df(self):
@@ -106,164 +92,147 @@ class Data:
         df_test = get_df_from_heroku(url_test)
         return (df_train, df_test)
   
-    def get_data_frame(self):
+    def get_train_df(self):
         return self.__df_train
 
-    def get_columns_name(self):
-        return self.__df_train.columns.tolist()
-        
-    def set_file_name(self):
-        new_file = input("Write the file name you want to look at :") 
-        self.__data_file = new_file
+    def get_test_df(self):
+        return self.__df_test
 
-    def set_columns_to_save(self):
-        ## ADD INTERACT here
-        cols = self.get_columns_name()
-        ## chose columns
-        cols = columns_to_save_test
-        self.__chosen_columns = cols
-        print(self.__chosen_columns)
-
-    def get_prepared_train_data(self):
-        return self.__prepare_data(self.__df_train, self.__chosen_columns)
+    def get_columns_names(self):
+        """Return list of features used in a model (use for prediction)"""
+        return self.__prediction_columns
     
-    def get_prepared_test_data(self):
-        cols_to_save = self.__chosen_columns.copy()
-        cols_to_save.remove(self.target)
-        return self.__prepare_data(self.__df_test, cols_to_save)
+    def get_prepared_data_for_model(self, model_name):
+        if model_name == 'RandomForest':
+            #do pca transformation
+            X_train = self.__preprocessing_pca(self.X_train)
+            X_test = self.__preprocessing_pca(self.X_test)          
+        else:
+            # do my transformation pipeline
+            X_train = self.__preprocessing_standard(self.X_train)
+            X_test = self.__preprocessing_standard(self.X_test)
+        return (X_train, X_test, self.y_train, self.y_test)
 
-### change this function for each data frame
-    def __prepare_data(self, df, cols_to_save):
-        new_df = df.copy()
-        new_df['Electrical'] = new_df['Electrical'].fillna(value='SBrkr')
-        new_df = new_df.drop(['GarageArea', 'GarageYrBlt', 'TotRmsAbvGrd', '1stFlrSF'], axis=1)
+    def __preprocessing_pca(self, X_input):
+        #apply pipeline here for pca transformation
+        #for pca models
+        X_input = X_input.drop(['Id' , 'MSSubClass', 'OverallQual', 'OverallCond', 'MoSold'], axis=1)
+        X_input = X_input.select_dtypes(include=['int', 'float'])
+        self.__prediction_columns = X_input.columns.to_list()
 
-
-    # drop columns
-        #new_df = drop_columns(new_df, cols_to_save)
-    # replace nan manually - function for manual correction for different data frame
-        #replace_nan_manually(new_df)     
-    # drop nan rows
-        #drop_nan_rows(new_df)
-        #new_df = remove_nan_column(new_df, self.__max_NaN_in_columns)
-    #remove anomaly
-        #new_df = abnormal_filter(new_df, self.__threshold_first, self.__threshold_second)
-        #print(f"Dropped {num_col - len(df.columns)} columns.")
-
-        return new_df
-
-    def pipeline(model_name, model, params):
         numeric_pipe = Pipeline(steps=[
             ('imputer', SimpleImputer(strategy='median')),
-            ('scaler', MinMaxScaler())])
-        categorical_encoder = Pipeline(steps=[
-            ('const_imputer', SimpleImputer(strategy='constant',fill_value='Abs')),
-            ('cat_encoder', OneHotEncoder())])
+            ('scaler', StandardScaler())])
 
-        ordinal_encoder = Pipeline(steps=[
-            ('const_imputer', SimpleImputer(strategy='constant',fill_value='Abs')),
-            ('ord_encoder', OrdinalEncoder())])
+        return numeric_pipe.fit_transform(X_input)
+
+    def __preprocessing_standard(self, X_input):
+        #version1
+        columns_to_save =  create_best_corr_list(self.__df_train, self.target) + ['Neighborhood']
+        #version2 (manual)
+        #columns_to_save = ['LotArea', 'OverallQual', '1stFlrSF', 'YearBuilt', 'YearRemodAdd', 'MasVnrArea', 'BsmtFinSF1', 'TotalBsmtSF', 'GrLivArea', 'FullBath', 'TotRmsAbvGrd', 'Fireplaces', 'GarageCars', 'GarageArea', 'MSZoning', 'LotShape', 'LandContour', 'Neighborhood', 'Condition1', 'Condition2', 'HouseStyle', 'RoofMatl', 'Exterior1st', 'Exterior2nd', 'ExterQual', 'BsmtQual', 'BsmtExposure', 'KitchenQual', 'Functional', 'SaleType', 'SaleCondition', "SalePrice"]
+        #1. create list of features to drop if they are not in a save list
+
+        self.__prediction_columns = columns_to_save
+        drop_features = [col for col in self.__df_train.columns if col not in columns_to_save] 
+        if self.target in drop_features:
+            drop_features.remove(self.target)
+
+        #2. ordinal - categorical
+        ordinal_features = [
+            feature for feature in ordinal_cols if feature not in drop_features
+        ]
+        ordinal_cat = create_categories_for_ordinal_features(self.__df_train, self.target, ordinal_features)
+
+        #3 numerical - with log transformation    
+        numeric_power_features = [
+            feature for feature in numeric_power_cols
+            if feature not in drop_features
+        ]
+
+        #4 numerical without log transformation
+        numeric_scale_features = [
+            feature for feature in numeric_scale_cols
+            if feature not in drop_features
+        ]
+
+        #5 categorical - dummies
+        categorical_features = self.__df_train.select_dtypes(include=['object']).columns
+        categorical_features = [
+            feature for feature in categorical_features
+            if feature not in ordinal_features and feature not in drop_features
+        ]
+
+        numeric_power_transformer = Pipeline(
+            steps=[('imputer', SimpleImputer(strategy='most_frequent')), 
+                #('powtransform', PowerTransformer()),
+                ('scaler', StandardScaler())
+                ])
+        numeric_scale_transformer = Pipeline(
+            steps=[('imputer', SimpleImputer(strategy='most_frequent')), 
+                ('scaler', StandardScaler()),          
+                ])
+
+        ordinal_transformer = Pipeline(steps=[
+            ('imputer1', SimpleImputer(strategy='constant', fill_value='absent')), 
+            ('imputer2', SimpleImputer(missing_values = None, strategy='constant', fill_value='absent')),
+            ('ordenc', OrdinalEncoder(categories = ordinal_cat)),
+            ('scaler', MinMaxScaler())])
+
+        categorical_transformer = Pipeline(steps=[
+            ('imputer1', SimpleImputer(                       strategy='constant', fill_value='absent')), 
+            ('imputer2', SimpleImputer(missing_values = None, strategy='constant', fill_value='absent')),
+            ('onehot', OneHotEncoder(handle_unknown='ignore'))])
 
         preprocessor = ColumnTransformer(transformers=[
-            ('num', numeric_pipe, selector(dtype_include=["int", "float"])),
-            ('ord_enc', ordinal_encoder, ordinal_cat_columns),
-            ('cat_enc', categorical_encoder, cat_columns)],remainder='passthrough')
+            ('drop', 'drop', drop_features),
+            ('num_pow', numeric_power_transformer, numeric_power_features),
+            ('num_scal', numeric_scale_transformer, numeric_scale_features),
+            ('cat', categorical_transformer, categorical_features),
+            ('ordinal', ordinal_transformer, ordinal_features)
+        ])
+        self.pipeline = preprocessor
 
-        reg_final = Pipeline(steps=[('preprocessor', preprocessor),
-                                    (f'{model_name}', model(params))])
-        return reg_final
+        return preprocessor.fit_transform(X_input)
 
-### help functions
-def drop_columns(df, columns_to_save):
-    df1 = df[columns_to_save]
-    #print(f"List of dropped columns:{drop_cols_names}")
-    return df1
- 
-def drop_nan_rows(df):    
-    df = df.dropna(axis = 0)
+#helf function for standard preprocessing pipeline 
+def create_categories_for_ordinal_features(df, target, list_ordinal_features):
+    ordinal_categories = []
+    for feature in list_ordinal_features:
+        categ = df[[feature, target
+                    ]].groupby(by=feature, as_index=False).mean().sort_values(
+                        by=target, ascending=True)[feature].to_list()
+        ordinal_categories.append(categ)
+    return ordinal_categories
 
-# df.count() does not include NaN values
-def remove_nan_column(df_old, percent_nan_in_column):    
+
+def create_best_corr_list(df, target, min_corr_coef = 0.51):
+    """
+    create_best_corr_list(df, target, min_corr_coef) - function which returns a list with numerical features 
+    which correlation coef with target more than 0.51. 
+    Also removes tweans features - features which are strongly correlated one with another.
     
-    df_new = df_old[[column for column in df_old if df_old[column].count()/len(df_old) >= 1.- percent_nan_in_column]]
-    #print("List of dropped columns:", end=" ")
-    if 'Id' in df_old.columns:
-        del df_new['Id']
-    # for c in df_old.columns:
-    #     if c not in df_new.columns:
-    #         print(c, end=", ")
-    return df_new
-
-
-def abnormal_filter(df, threshold_first, threshold_second):
-    # Abnormal values filter for DataFrame df:
-    # threshold_first (5%-min or max-95%)
-    # threshold_second (second diff., times)
-    ## 5% 10% 90% 95%
-    df_describe = df.describe([.05, .1, .9, .95])
-    cols = df_describe.columns.tolist()
-    i = 0
-    abnorm = 0
-    for col in cols:
-        i += 1
-        # abnormal smallest
-        P10_5 = df_describe.loc['10%',col]-df_describe.loc['5%',col]
-        P_max_min = df_describe.loc['max',col]-df_describe.loc['min',col]
-        if P10_5 != 0:
-            if (df_describe.loc['5%',col]-df_describe.loc['min',col])/P10_5 > threshold_second:
-                #abnormal smallest filter
-                df = df[(df[col] >= df_describe.loc['5%',col])]
-                #print('1: ', i, col, df_describe.loc['min',col],df_describe.loc['5%',col],df_describe.loc['10%',col])
-                abnorm += 1
-        else:
-            if P_max_min > 0:
-                if (df_describe.loc['5%',col]-df_describe.loc['min',col])/P_max_min > threshold_first:
-                    # abnormal smallest filter
-                    df = df[(df[col] >= df_describe.loc['5%',col])]
-                    #print('2: ', i, col, df_describe.loc['min',col],df_describe.loc['5%',col],df_describe.loc['max',col])
-                    abnorm += 1
-
-        
-        # abnormal biggest
-        P95_90 = df_describe.loc['95%',col]-df_describe.loc['90%',col]
-        if P95_90 != 0:
-            if (df_describe.loc['max',col]-df_describe.loc['95%',col])/P95_90 > threshold_second:
-                #abnormal biggest filter
-                df = df[(df[col] <= df_describe.loc['95%',col])]
-                #print('3: ', i, col, df_describe.loc['90%',col],df_describe.loc['95%',col],df_describe.loc['max',col])
-                abnorm += 1
-        else:
-            if P_max_min > 0:
-                if ((df_describe.loc['max',col]-df_describe.loc['95%',col])/P_max_min > threshold_first) & (df_describe.loc['95%',col] > 0):
-                    # abnormal biggest filter
-                    df = df[(df[col] <= df_describe.loc['95%',col])]
-                    #print('4: ', i, col, df_describe.loc['min',col],df_describe.loc['95%',col],df_describe.loc['max',col])
-                    abnorm += 1
-    #print('Number of abnormal values removed =', abnorm)
-    return df
-
-
-def replace_nan_manually(df):
-    df['LotFrontage'] = df['LotFrontage'].replace(np.nan, 'No Street connected')
-    df['Alley'] = df['Alley'].replace(np.nan, 'No Alley')
-    df['MasVnrType'] = df['MasVnrType'].replace(np.nan, 'No MasVnr')
-    df['MasVnrArea'] = df['MasVnrArea'].replace(np.nan, 0).astype(float)
-    df['BsmtQual'] = df['BsmtQual'].replace(np.nan, 'No Bsmt')
-    df['BsmtCond'] = df['BsmtCond'].replace(np.nan, 'No Bsmt')
-    df['BsmtExposure'] = df['BsmtExposure'].replace(np.nan, 'No Bsmt')
-    df['BsmtFinType1'] = df['BsmtFinType1'].replace(np.nan, 'No Bsmt')
-    df['BsmtFinType2'] = df['BsmtFinType2'].replace(np.nan, 'No 2ndBsmt')
-    df['FireplaceQu'] = df['FireplaceQu'].replace(np.nan, 'No Fireplace')
-    df['GarageType'] = df['GarageType'].replace(np.nan, 'No Garage')
-    df['GarageYrBlt'] = df['GarageYrBlt'].replace(np.nan, 'No Garage')
-    df['GarageFinish'] = df['GarageFinish'].replace(np.nan, 'No Garage')
-    df['GarageQual'] = df['GarageQual'].replace(np.nan, 'No Garage')
-    df['GarageCond'] = df['GarageCond'].replace(np.nan, 'No Garage')
-    df['PoolQC'] = df['PoolQC'].replace(np.nan, 'No Pool')
-    df['Fence'] = df['Fence'].replace(np.nan, 'No Fence')
-    df['MiscFeature'] = df['MiscFeature'].replace(np.nan, 'No Feature')
-
-
-
-
+    Parameters:
+    df - data frame
+    target - target column
+    min_corr_coef - min correlation allowed between target and features, by default - 0.51
+    Return:
+    <list>  - list of features 
+    """
     
+    corrmat = df.corr()
+    best_corr_cols = corrmat[corrmat[target]>min_corr_coef].sort_values(by=target, ascending = False)
+    best_corr_cols = best_corr_cols.index.to_list()
+    best_corr_cols.remove(target)
+    
+    for col1 in best_corr_cols:
+        for col2 in best_corr_cols:
+            if col1 != col2:
+                corr12 = corrmat.loc[col1, col2]
+                if corr12 > 0.80: ## assumtion for tweans
+                    if corrmat.loc[col1, target] >= corrmat.loc[col2, target]:
+                        best_corr_cols.remove(col2)
+                    else:
+                        best_corr_cols.remove(col1)
+                        
+    return best_corr_cols    

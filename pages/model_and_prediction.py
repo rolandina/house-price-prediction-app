@@ -6,7 +6,6 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from streamlit.state.session_state import Value
 from model.data import Data 
-from model.data import columns_to_save_not_pca
 
 from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.preprocessing import StandardScaler, OrdinalEncoder
@@ -26,29 +25,32 @@ mpl.rcParams.update(mpl.rcParamsDefault)
 
 
 #prepare cache data
-@st.cache
+@st.cache(allow_output_mutation=True)
 def load_data():
     return Data()
 
 target = "SalePrice"
 
-def widget_predict(df):
-    dict_params = {col: 0 for col in df.columns}
+def widget_predict(df, cols):
+    dict_params = {col: 0 for col in cols}
     house = {col: [] for col in df.columns}
-    for key in dict_params.keys():
-        if df[key].dtypes == 'int' or df[key].dtypes == 'float':
-            if len(df[key].unique())>10:
-                dict_params[key] = (df[key].min(), df[key].max())
-                house[key].append(st.slider(key, dict_params[key][0], dict_params[key][1] ))
-            elif len(df[key].unique())<=10:
+    for key in df.columns:
+        if key in cols:
+            if df[key].dtypes == 'int' or df[key].dtypes == 'float':
+                if len(df[key].unique())>10:
+                    dict_params[key] = (df[key].min(), df[key].max())
+                    house[key].append(st.slider(key, dict_params[key][0], dict_params[key][1] ))
+                elif len(df[key].unique())<=10:
+                    dict_params[key] = tuple(df[key].unique())
+                    house[key].append(st.selectbox(key, dict_params[key]))
+            else:
                 dict_params[key] = tuple(df[key].unique())
                 house[key].append(st.selectbox(key,dict_params[key]))
-                
-
         else:
-            dict_params[key] = tuple(df[key].unique())
-            house[key].append(st.selectbox(key,dict_params[key]))
-    h = pd.DataFrame(house).values
+            house[key].append(np.NaN)
+    
+    h = pd.DataFrame(house)
+
     return h
 
 def add_parameter_ui(reg_name):
@@ -75,8 +77,8 @@ def add_parameter_gs_ui(reg_name):
     if reg_name == 'Linear Regression':
         normalize = st.sidebar.multiselect('normalize',['True', 'False'], default=['True']); params['normalize'] = normalize
     elif reg_name == 'RandomForest':
-        n_estimators = st.sidebar.slider('estimator', min_value = 100, max_value = 1000); params['n_estimators'] = n_estimators
-        max_depth = st.sidebar.slider('max depths', min_value = 1, max_value = 100); params['max_depth'] = max_depth
+        n_estimators = st.sidebar.slider('estimator', min_value = 100, max_value = 1000, value = 200); params['n_estimators'] = n_estimators
+        max_depth = st.sidebar.slider('max depths', min_value = 1, max_value = 100, value = 8); params['max_depth'] = max_depth
     elif reg_name == 'Lasso':
         alpha = st.sidebar.slider('alpha', min_value = 1, max_value = 30, value=(1, 5)); params['alpha'] = list(np.linspace(alpha[0], alpha[1], num = alpha[1]-alpha[0]+1, endpoint=True))
         max_iter = st.sidebar.slider('maximum iteration', min_value = 500, max_value = 3000, step = 500, value = (500,2000)); params['max_iter'] = max_iter
@@ -97,11 +99,8 @@ def get_regressor(reg_name, params):
         if reg_name == 'Linear Regression':
             reg = LinearRegression(normalize=params['normalize'])
         elif reg_name == 'RandomForest':
-            #Pipeline for PCA
-            numeric_pipe = Pipeline(steps=[
-            ('imputer', SimpleImputer(strategy='median')),
-            ('scaler', StandardScaler())])
-            reg = Pipeline(steps=[('numeric_pipe', numeric_pipe),
+            #Pipeline for PCA with random forest
+            reg = Pipeline(steps=[
                               ('PCA', PCA(n_components=23)),
                               ('regressor', RandomForestRegressor(n_estimators=params['n_estimators'], max_depth=params['max_depth']))])
         elif reg_name == 'Lasso':
@@ -143,49 +142,44 @@ def app():
     """
     #prepare data
     data = load_data()
-    test = data.get_prepared_test_data()
-    train = data.get_prepared_train_data()
-
-    X, y = train[[col for col in train.columns if col != target]], train[target]
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.20, random_state=1)
-
-    X_train_pca = X_train.select_dtypes(include=['int', 'float'])
-    X_test_pca = X_test.select_dtypes(include=['int', 'float'])
 
     #separate page on 3 columns - left column - for 'building a model section', middle one for spacing and right one - for 'price prediction'
     col1, col_space, col2 = st.beta_columns([4,1,4])
 
     with col1:
-        st.title("Building a model")
+        
+        st.markdown('<p style="color:Green; font-size: 38px;"> Building a model</p>', unsafe_allow_html=True)
+           
         model_name = st.selectbox('Select models:',
             ('Linear Regression', 'RandomForest', 'Ridge', 'Lasso'))
 
+        X_train, X_test, y_train, y_test = data.get_prepared_data_for_model(model_name)
 
-        is_grid_search = st.checkbox('Grid Search')
+        # is_grid_search = st.checkbox('Grid Search')
 
-        if is_grid_search:
-            params = add_parameter_gs_ui(model_name)
-            st.write(model_name, " with grid search")
-            st.write(params)
+        # if is_grid_search:
+        #     params = add_parameter_gs_ui(model_name)
+        #     st.write(model_name, " with grid search")
+        #     st.write(params)
 
-        else:
-            params = add_parameter_ui(model_name)
-            model = get_regressor(model_name, params)
-            if model_name == 'RandomForest':
-                model.fit(X_train_pca, y_train)
-                show_test_metrics(model, X_test_pca, y_test)
-            else:
-                X_train = X_train[columns_to_save_not_pca]
-                X_test = X_test[columns_to_save_not_pca]
-                model.fit(X_train, y_train)
-                show_test_metrics(model, X_test, y_test)
+        # else:
+        params = add_parameter_ui(model_name)
+        model = get_regressor(model_name, params)
+        model.fit(X_train, y_train)
+        show_test_metrics(model, X_test, y_test)
+        
 
     # right column with house price prediction
     with col2:
-        st.title("Price Prediction")
-        X_house = widget_predict(test)
-
-        value = model.predict(X_house)[0]
-        
-        result_price = f'## Expected price of the house is:\n <p style="font-family:sans-serif; color:Green; font-size: 42px;">{value:,.0f} $</p>'
+        st.markdown('<p style="color:Green; font-size: 38px;"> Price Prediction</p>', unsafe_allow_html=True)
+        X_house = widget_predict(data.get_test_df(), data.get_columns_names())
+        st.write(X_house)
+        dfh = data.X_test.loc[:, data.get_columns_names()]
+        st.write(f'fkj {type(dfh)}', unsafe_allow_html=True)
+        if model_name != "RandomForest":
+            data.pipeline.fit(dfh)
+            #X_house = data.pipeline.transform(X_house)
+        #value = model.predict(X_house)[0]
+        value = 0
+        result_price = f'## Expected price of the house is:\n <p style="color:Green; font-size: 42px;">{value:,.0f} $</p>'
         st.markdown(result_price, unsafe_allow_html=True)

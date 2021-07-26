@@ -15,7 +15,7 @@ def app():
         return Data()
 
     data = load_data()
-    train = data.get_prepared_train_data()
+    train = data.get_train_df()
     text_markdown = """
 
 
