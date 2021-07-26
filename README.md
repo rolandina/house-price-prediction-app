@@ -11,7 +11,7 @@ House price prediction application is an application which were made for educati
 - [multipage.py](https://github.com/rolandina/house-price-prediction-app/blob/master/multipage.py) - file with MultiPage class which allow us to create new page automatically
 
 In the folder [model](https://github.com/rolandina/house-price-prediction-app/tree/master/model):
-- [data.py](https://github.com/rolandina/house-price-prediction-app/blob/master/model/data.py) - file with class Data() which get data from fastapi server. Original data is taken from here
+- [data.py](https://github.com/rolandina/house-price-prediction-app/blob/master/model/data.py) - file with class Data() which get data from fastapi server. Original data is taken from [here](https://www.kaggle.com/c/house-prices-advanced-regression-techniques/data).
 
 In the folder [data](https://github.com/rolandina/house-price-prediction-app/tree/master/data):
 - [data/data_description.txt](https://github.com/rolandina/house-price-prediction/blob/master/data/data_description.txt)
@@ -19,8 +19,8 @@ In the folder [data](https://github.com/rolandina/house-price-prediction-app/tre
 - [data/test.csv](https://github.com/rolandina/house-price-prediction-app/blob/master/data/test.csv)
 
 In folder [pages](https://github.com/rolandina/house-price-prediction-app/tree/master/pages)
-- [description.py]()
 - [data_analysis.py](https://github.com/rolandina/house-price-prediction-app/blob/master/pages/data_analysis.py)
+- [pca.py](https://github.com/rolandina/house-price-prediction-app/blob/master/pages/pca.py)
 - [model_and_prediction.py](https://github.com/rolandina/house-price-prediction-app/blob/master/pages/model_and_prediction.py)
 
 
@@ -49,6 +49,12 @@ git clone https://github.com/rolandina/house-price-prediction-git.git
 
 
 ## Contributing
+
+Contributers of the project:
+- [Julie CHARRIER](https://github.com/JulieCHARRIER)
+- [Marie-Laure PETUAUD-LETANG](https://github.com/mlpetuaud)
+- [Florian KOGON](https://github.com/FlorianKogon)
+- [Nina SMIRNOVA](https://github.com/rolandina)
 
 This application was created with following tools:
 - [heroku](https://dashboard.heroku.com/apps)
