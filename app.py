@@ -7,7 +7,7 @@ from PIL import  Image
 # Custom imports 
 from multipage import MultiPage
 
-from pages import test, data_analysis, model_and_prediction, pca # import your pages here
+from pages import data_analysis, model_and_prediction, pca # import your pages here
 
 display = Image.open('data/house_price_b.jpg')
 
