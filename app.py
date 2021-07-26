@@ -32,8 +32,9 @@ application you are free to analyse the price of the houses depending from diffe
 # Add all your application here
 #app.add_page("test", test.app)
 app.add_page("Data Analysis", data_analysis.app)
-app.add_page("Model and price prediction", model_and_prediction.app)
 app.add_page("PCA", pca.app)
+app.add_page("Model and price prediction", model_and_prediction.app)
+
 
 # The main app
 app.run()
