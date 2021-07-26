@@ -96,7 +96,7 @@ Objectifs ==> imputer les valeurs manquantes et centrer les données autour de 0
     with col1:
         st.pyplot(fig)
 
-    fig2 = plt.figure(figsize=(10,4))
+    fig2 = plt.figure(figsize=(6,4))
     features = range(pca.n_components_)
     plt.title('Visualisation de la variance expliquée')
     plt.bar(features, pca.explained_variance_ratio_)
@@ -106,14 +106,15 @@ Objectifs ==> imputer les valeurs manquantes et centrer les données autour de 0
     with col2:
         st.pyplot(fig2)
     
+    col3, col4 = st.beta_columns([1,1])
     fig3 = px.scatter(components, x=0, y=1, color=y_train,
                 labels = {
     "0":"Principal Component n°1",
     "1":"Principal Component n°2"
                         },
                 title="Projection de X sur les deux premiers axes des Composantes Principales")
-    st.plotly_chart(fig3)
-    # fig3 = px.scatter(components, x=0, y=1, color=y_train, 
+    with col3:
+        st.plotly_chart(fig3)
                  
     
 
