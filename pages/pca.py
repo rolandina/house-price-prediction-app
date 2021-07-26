@@ -94,7 +94,7 @@ Objectifs ==> imputer les valeurs manquantes et centrer les données autour de 0
     with col1:
         st.pyplot(fig)
 
-    fig2 = plt.figure(figsize=(6,4))
+    fig2 = plt.figure(figsize=(10,4))
     features = range(pca.n_components_)
     plt.title('Visualisation de la variance expliquée')
     plt.bar(features, pca.explained_variance_ratio_)
