@@ -73,7 +73,7 @@ Objectifs ==> imputer les valeurs manquantes et centrer les données autour de 0
     X_train_num_scaled = num_scaler.fit_transform(X_train_num_imputed)
     X_train_num_scaled_df = pd.DataFrame(X_train_num_scaled, columns = X_train_pca.columns)
 
-    pca = PCA(n_components=23)
+    pca = PCA()
     components = pca.fit_transform(X_train_num_scaled_df)
     pca.fit(X_train_num_scaled_df)
     cumsum = np.cumsum(pca.explained_variance_ratio_)
