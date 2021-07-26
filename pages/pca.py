@@ -100,7 +100,7 @@ Objectifs ==> imputer les valeurs manquantes et centrer les données autour de 0
     plt.bar(features, pca.explained_variance_ratio_)
     plt.xlabel('Principal Components')
     plt.ylabel('Explained Variance')
-    plt.xticks(features)
+    #plt.xticks(features)
     with col2:
         st.pyplot(fig2)
 
