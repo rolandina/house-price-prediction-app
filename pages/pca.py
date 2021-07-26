@@ -1,5 +1,6 @@
 import streamlit as st
 import matplotlib.pyplot as plt
+import plotly.express as px
 import numpy as np # linear algebra
 import pandas as pd
 from sklearn.impute import SimpleImputer
@@ -73,6 +74,7 @@ Objectifs ==> imputer les valeurs manquantes et centrer les données autour de 0
     X_train_num_scaled_df = pd.DataFrame(X_train_num_scaled, columns = X_train_pca.columns)
 
     pca = PCA()
+    components = pca.fit_transform(X_train_num_scaled_df)
     pca.fit(X_train_num_scaled_df)
     cumsum = np.cumsum(pca.explained_variance_ratio_)
     d = np.argmax(cumsum >= 0.95) + 1
@@ -94,7 +96,7 @@ Objectifs ==> imputer les valeurs manquantes et centrer les données autour de 0
     with col1:
         st.pyplot(fig)
 
-    fig2 = plt.figure(figsize=(6,4))
+    fig2 = plt.figure(figsize=(10,4))
     features = range(pca.n_components_)
     plt.title('Visualisation de la variance expliquée')
     plt.bar(features, pca.explained_variance_ratio_)
@@ -103,7 +105,18 @@ Objectifs ==> imputer les valeurs manquantes et centrer les données autour de 0
     #plt.xticks(features)
     with col2:
         st.pyplot(fig2)
-
     
+    fig3 = px.scatter(components, x=0, y=1, color=y_train,
+                labels = {
+    "0":"Principal Component n°1",
+    "1":"Principal Component n°2"
+                        },
+                title="Projection de X sur les deux premiers axes des Composantes Principales")
+    st.plotly_chart(fig3)
+    # fig3 = px.scatter(components, x=0, y=1, color=y_train, 
+                 
+    
+
+ 
     
 
