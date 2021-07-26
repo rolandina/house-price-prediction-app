@@ -76,6 +76,9 @@ Objectifs ==> imputer les valeurs manquantes et centrer les données autour de 0
     pca.fit(X_train_num_scaled_df)
     cumsum = np.cumsum(pca.explained_variance_ratio_)
     d = np.argmax(cumsum >= 0.95) + 1
+
+    col1, col2 = st.beta_columns([1,1])
+
     fig = plt.figure(figsize=(6,4))
     plt.title("Somme cumulative de la variance expliquée")
     plt.plot(cumsum, linewidth=2)
@@ -88,13 +91,19 @@ Objectifs ==> imputer les valeurs manquantes et centrer les données autour de 0
     #plt.annotate("Elbow", xy=(65, 0.85), xytext=(70, 0.7),
                  #arrowprops=dict(arrowstyle="->"), fontsize=16)
     plt.grid(True)
-    st.pyplot(fig)
+    with col1:
+        st.pyplot(fig)
 
-    fig2 = plt.figure(figsize=(20,10))
+    fig2 = plt.figure(figsize=(6,4))
     features = range(pca.n_components_)
     plt.title('Visualisation de la variance expliquée')
     plt.bar(features, pca.explained_variance_ratio_)
     plt.xlabel('Principal Components')
     plt.ylabel('Explained Variance')
     plt.xticks(features)
-    st.pyplot(fig2)
+    with col2:
+        st.pyplot(fig2)
+
+    
+    
+
